@@ -1,0 +1,6 @@
+# Ignore everything
+*
+# but racket files
+!*.rkt
+# and the .gitignore itself
+!.gitignore
