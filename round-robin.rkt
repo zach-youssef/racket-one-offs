@@ -113,7 +113,11 @@
 ;-----------------------------------------------
 
 (define week3-picks '(-300 -1500 -560 -330))
+(define week4-picks '(-420 -320 -134 -600))
+(define week4-picks-2 '(-320 -130 -590 -154))
+(define week5-picks '(-400 -370 -330 -174 -1200))
+(define week5-picks+chargers (cons -190 week5-picks))
 
 ;-----------------------------------------------
 
-(round-robin-print week3-picks)
+(round-robin-print week5-picks+chargers)
