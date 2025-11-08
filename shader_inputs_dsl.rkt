@@ -40,25 +40,31 @@
   (syntax-rules ()
     [(shader-data header-path shader-path data-layouts ...)
      (let ([layouts (data-layout-parse-list data-layouts ...)])
-       (cpp-string layouts))]))
+       (display (cpp-string layouts)))]))
 
 (define (cpp-string layouts)
+  (define (glm-prefix type)
+    (if (ormap (λ [t] (symbol=? t type)) '(vec2 vec3 vec4 mat4)) "glm::" ""))
   (define (cpp-field field)
-    ; TODO: map types to glm equivalent
-    (string-append "\t" (symbol->string (field-type field)) " " (symbol->string (field-name field)) ";"))
+    (string-append "\t" (glm-prefix (field-type field)) (symbol->string (field-type field)) " " (symbol->string (field-name field)) ";"))
+  (define (cpp-struct buffer extras)
+    (string-append "struct " (string-titlecase (symbol->string (buffer-name buffer))) " {\n"
+                   (string-join (map cpp-field (buffer-fields buffer)) "\n")
+                   extras
+                   "\n};\n"))
   (define (cpp-ubo ubo)
-    ; TODO: Add alginment macros
-    (string-append "struct " (string-titlecase (symbol->string (buffer-name ubo))) "{\n"
-                   (string-join (map cpp-field (buffer-fields ubo)) "\n")
-                   "};\n"))
-  (define (cpp-vert vert) "") ; TODO: Implement
+    (cpp-struct ubo ""))
+  (define (cpp-vert vert)
+    (cpp-struct vert "")) ; TODO pass in binding & attribute descriptions as extras
   (define (cpp-layout l)
     (match l
       [(layout 'uniform-buffers ubos) (string-join (map cpp-ubo ubos) "\n")]
       [(layout 'vertex-streams vert-streams) (string-join (map cpp-vert vert-streams) "\n")]
       [(layout unknown _) (error "Unknown layout type" unknown)]))
-  (string-append "// This code was generated and should not be modified by hand.\n#pragma once\n"
-                 ; TODO: Add glm imports
+  (string-append "// This code was generated and should not be modified by hand.\n"
+                 "#pragma once\n\n"
+                 "#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES\n"
+                 "#include <glm/glm.hpp>\n\n"
                  (string-join (map cpp-layout layouts) "\n")))
 
 (shader-data "path/to/c++/out" "path/to/glsl/out"
