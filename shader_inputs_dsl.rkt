@@ -1,5 +1,10 @@
 #lang racket
 
+(provide shader-data)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Syntax parsers and struts to store the parsed layout
+
 (struct field (type name) #;transparent)
 (struct buffer (name fields) #;transparent)
 (struct layout (type buffers) #;transparent)
@@ -42,13 +47,14 @@
                                                            (ifield j (field-type f) (field-name f))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Top level macro that implements the "language"
 
 (define-syntax shader-data
   (syntax-rules ()
     [(shader-data header-path shader-path data-layouts ...)
      (let ([layouts (label-layout-indices (data-layout-parse-list data-layouts ...))]
-           [cpp-out (open-output-file header-path)]
-           [glsl-out (open-output-file shader-path)])
+           [cpp-out (open-output-file header-path #:exists 'replace)]
+           [glsl-out (open-output-file shader-path #:exists 'replace)])
        (begin
          (display (glsl-string layouts) glsl-out)
          (close-output-port glsl-out)
@@ -56,6 +62,7 @@
          (close-output-port cpp-out)))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Common output formatting functions
 
 (define (convert-layout header-string uniform-fn vertex-fn)
   (λ [layouts] (string-append header-string
@@ -66,12 +73,12 @@
                                                 layouts) "\n")
                               "\n")))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (buffer-struct-name buffer)
   (string-titlecase (symbol->string (ibuffer-name buffer))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Generate CPP header contents from parsed layout
 
 (define cpp-string (let* ([glm-prefix (λ [type] (if (ormap (λ [t] (symbol=? t type)) '(vec2 vec3 vec4 mat3 mat4)) "glm::" ""))]
                           [cpp-field (λ [field] (string-append "\t" (glm-prefix (ifield-type field)) (symbol->string (ifield-type field)) " " (symbol->string (ifield-name field)) ";"))]
@@ -120,6 +127,7 @@
                                                               "\t}")))))))
                                              
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Generate GLSL file from parsed layout
 
 (define glsl-string (convert-layout
                      (string-append "// This code was generated and should not be modified by hand.\n"
@@ -134,7 +142,8 @@
                                             "\n"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(shader-data "/tmp/ShaderLayout.h" "/tmp/ShaderLayout.glsl"
+; Example DSL usage
+#;(shader-data "/tmp/ShaderLayout.h" "/tmp/ShaderLayout.glsl"
              (uniform-buffers (ubo0 [mat4 mvp]
                                     [float foo])
                               (ubo1 [vec3 bar]
