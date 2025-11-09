@@ -46,9 +46,14 @@
 (define-syntax shader-data
   (syntax-rules ()
     [(shader-data header-path shader-path data-layouts ...)
-     (let ([layouts (label-layout-indices (data-layout-parse-list data-layouts ...))])
-       (display (glsl-string layouts))
-       (display (cpp-string layouts)))]))
+     (let ([layouts (label-layout-indices (data-layout-parse-list data-layouts ...))]
+           [cpp-out (open-output-file header-path)]
+           [glsl-out (open-output-file shader-path)])
+       (begin
+         (display (glsl-string layouts) glsl-out)
+         (close-output-port glsl-out)
+         (display (cpp-string layouts) cpp-out)
+         (close-output-port cpp-out)))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -58,7 +63,8 @@
                                                          [(layout 'uniform-buffers ubos) (string-join (map uniform-fn ubos) "\n")]
                                                          [(layout 'vertex-streams vert-streams) (string-join (map vertex-fn vert-streams) "\n")]
                                                          [(layout unknown _) (error "Unknown layout type" unknown)]))
-                                                layouts) "\n"))))
+                                                layouts) "\n")
+                              "\n")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -128,7 +134,7 @@
                                             "\n"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(shader-data "path/to/c++/out" "path/to/glsl/out"
+(shader-data "/tmp/ShaderLayout.h" "/tmp/ShaderLayout.glsl"
              (uniform-buffers (ubo0 [mat4 mvp]
                                     [float foo])
                               (ubo1 [vec3 bar]
